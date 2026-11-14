@@ -50,7 +50,7 @@ def strip_boilerplate(text: str) -> str:
 
 
 def main() -> int:
-    out_dir = Path(__file__).resolve().parent.parent / "src" / "lpswarm" / "fixtures"
+    out_dir = Path(__file__).resolve().parent.parent / "src" / "oracle_router" / "fixtures"
     out_dir.mkdir(parents=True, exist_ok=True)
     ok = []
     failed = []

@@ -3,7 +3,7 @@
 Reference run of the Phase 1 baseline (no models) on all imported sections.
 
 ```
-lpswarm baseline --manifest data/lp/manifest.json --alphabet data/alphabet/gematria_primus.json --ledger lp.sqlite
+oracle-router baseline --manifest data/lp/manifest.json --alphabet data/alphabet/gematria_primus.json --ledger lp.sqlite
 ```
 
 - Alphabet: Gematria Primus (29 runes). Oracle: English, alpha = 0.01 per section, final

@@ -15,7 +15,7 @@
   none) the proposer server runs on 11434 and the ranker server on 11435 runs on the
   CPU, so the models config never changes when a second card goes in.
 
-  Run after every reboot, before lpswarm runs:
+  Run after every reboot, before oracle-router runs:
       powershell -ExecutionPolicy Bypass -File scripts\start_ollama.ps1
   Stop the servers:
       powershell -ExecutionPolicy Bypass -File scripts\start_ollama.ps1 -Stop

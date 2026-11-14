@@ -3,7 +3,7 @@
 Reference run of the non-model arms: the bar a model arm has to clear. Reproduce with:
 
 ```
-lpswarm tiertest --arms baseline,random_program:40,random_program:2000 --lengths 80,160 --cases 10
+oracle-router tiertest --arms baseline,random_program:40,random_program:2000 --lengths 80,160 --cases 10
 ```
 
 - `random_program:40` has the same number of proposals as a default model arm (5 rounds x 8): the per-proposal control a model must beat.

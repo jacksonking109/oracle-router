@@ -2,8 +2,8 @@
 import json
 from pathlib import Path
 
-from lpswarm.cli import main
-from lpswarm.swarm.loop import GeneratorStats, normalise_reason
+from oracle_router.cli import main
+from oracle_router.swarm.loop import GeneratorStats, normalise_reason
 
 ROOT = Path(__file__).resolve().parent.parent
 

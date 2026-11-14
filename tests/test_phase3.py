@@ -8,18 +8,18 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import numpy as np
 import pytest
 
-from lpswarm.alphabet import Alphabet
-from lpswarm.executor import Executor, ExplicitKeys, Target
-from lpswarm.ledger import Ledger
-from lpswarm.programs import (SpecError, compile_spec, decrypt, describe, encrypt, expand,
+from oracle_router.alphabet import Alphabet
+from oracle_router.executor import Executor, ExplicitKeys, Target
+from oracle_router.ledger import Ledger
+from oracle_router.programs import (SpecError, compile_spec, decrypt, describe, encrypt, expand,
                               roundtrips)
-from lpswarm.programs.sampler import sample_spec
-from lpswarm.programs.sequences import e_digits, fibonacci, pi_digits, prime_totients, primes
-from lpswarm.router import (AdapterError, BudgetExceeded, CommandAdapter, ModelSpec,
+from oracle_router.programs.sampler import sample_spec
+from oracle_router.programs.sequences import e_digits, fibonacci, pi_digits, prime_totients, primes
+from oracle_router.router import (AdapterError, BudgetExceeded, CommandAdapter, ModelSpec,
                             OllamaAdapter, OpenAICompatibleAdapter, Role, Router, ScriptedAdapter)
-from lpswarm.swarm import (LLMGenerator, RandomProgramGenerator, SwarmConfig, parse_proposals,
+from oracle_router.swarm import (LLMGenerator, RandomProgramGenerator, SwarmConfig, parse_proposals,
                            run_swarm)
-from lpswarm.textgen.synth import generate_case, heldout_cases
+from oracle_router.textgen.synth import generate_case, heldout_cases
 
 A = Alphabet.latin26()
 
@@ -156,7 +156,7 @@ def _flaky(errors):
             F.calls += 1
             if errors:
                 raise errors.pop(0)
-            from lpswarm.router import Completion
+            from oracle_router.router import Completion
             return Completion("ok", "f")
     return F()
 
@@ -180,7 +180,7 @@ def test_router_budget_roles_and_logging():
 
 
 def test_config_rejects_inline_keys_and_supports_scripted(tmp_path):
-    from lpswarm.router import load_model_specs
+    from oracle_router.router import load_model_specs
     bad = tmp_path / "bad.toml"
     bad.write_text('[models.x]\nprovider = "openai_compatible"\nmodel = "m"\napi_key = "sk-123"\n',
                    encoding="utf-8")
@@ -231,8 +231,8 @@ def stub():
 
 
 def test_openai_compatible_adapter(stub, monkeypatch):
-    monkeypatch.setenv("LPSWARM_TEST_KEY", "test-not-a-real-key")
-    ad = OpenAICompatibleAdapter("deepseek-x", stub, "LPSWARM_TEST_KEY", price_in_per_mtok=0.5,
+    monkeypatch.setenv("ORACLE_ROUTER_TEST_KEY", "test-not-a-real-key")
+    ad = OpenAICompatibleAdapter("deepseek-x", stub, "ORACLE_ROUTER_TEST_KEY", price_in_per_mtok=0.5,
                                  price_out_per_mtok=2.0, json_mode=True)
     c = ad.complete([{"role": "user", "content": "q"}])
     assert c.text == "hi" and c.usd == pytest.approx(0.5 + 1.0)
@@ -240,18 +240,18 @@ def test_openai_compatible_adapter(stub, monkeypatch):
     assert path == "/chat/completions" and headers["Authorization"] == "Bearer test-not-a-real-key"
     assert body["response_format"] == {"type": "json_object"}
     assert "thinking" not in body
-    ad2 = OpenAICompatibleAdapter("deepseek-x", stub, "LPSWARM_TEST_KEY",
+    ad2 = OpenAICompatibleAdapter("deepseek-x", stub, "ORACLE_ROUTER_TEST_KEY",
                                   extra_body={"thinking": {"type": "disabled"}})
     ad2.complete([{"role": "user", "content": "q"}])
     assert _Stub.seen[-1][2]["thinking"] == {"type": "disabled"}
     with pytest.raises(ValueError):
         OpenAICompatibleAdapter("m", stub, "K", extra_body={"model": "other"})
-    monkeypatch.delenv("LPSWARM_TEST_KEY")
+    monkeypatch.delenv("ORACLE_ROUTER_TEST_KEY")
     with pytest.raises(AdapterError, match="not set"):
         ad.complete([])
-    monkeypatch.setenv("LPSWARM_TEST_KEY", "test-not-a-real-key")
+    monkeypatch.setenv("ORACLE_ROUTER_TEST_KEY", "test-not-a-real-key")
     with pytest.raises(AdapterError) as ei:
-        OpenAICompatibleAdapter("fail", stub, "LPSWARM_TEST_KEY").complete([])
+        OpenAICompatibleAdapter("fail", stub, "ORACLE_ROUTER_TEST_KEY").complete([])
     assert "test-not-a-real-key" not in str(ei.value)
 
 
@@ -324,8 +324,8 @@ def test_random_generator_and_attempt_cap(oracle):
 
 
 def test_tiertest_smoke(tmp_path):
-    from lpswarm.oracle import OracleConfig
-    from lpswarm.validation.tiertest import TierConfig, run_tiertest
+    from oracle_router.oracle import OracleConfig
+    from oracle_router.validation.tiertest import TierConfig, run_tiertest
     cfg = tmp_path / "m.toml"
     reply = json.dumps({"proposals": [{"spec": {"stream": {"kind": "constant", "value": 1}}}]})
     cfg.write_text('[models.dry]\nprovider = "scripted"\nmodel = "dry"\nroles = ["proposer"]\n'
@@ -393,7 +393,7 @@ def test_offset_ranges_dedupe_in_ledger(oracle):
 
 def test_sequence_windows_are_cheap_at_limits():
     import time
-    from lpswarm.programs.sequences import window
+    from oracle_router.programs.sequences import window
     t = time.monotonic()
     window("fibonacci", 9_000_000, 2500, 29)
     window("pi_digits", 19_000, 2500, 29)
@@ -429,7 +429,7 @@ def test_router_retries_only_transient():
 def test_router_caps_need_ledger_and_numbers(tmp_path):
     with pytest.raises(ValueError, match="ledger"):
         Router([_spec("m", max_usd=1.0)], adapters={"m": ScriptedAdapter("m", ["x"])})
-    from lpswarm.router import load_model_specs
+    from oracle_router.router import load_model_specs
     bad = tmp_path / "b.toml"
     bad.write_text('[models.x]\nprovider = "ollama"\nmodel = "m"\nmax_usd = "five"\n', encoding="utf-8")
     with pytest.raises(ValueError, match="max_usd"):
@@ -446,9 +446,9 @@ def test_secret_is_redacted_from_http_errors(stub, monkeypatch):
     from http.server import HTTPServer as HS
     srv = HS(("127.0.0.1", 0), Echo)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
-    monkeypatch.setenv("LPSWARM_TEST_KEY", "sk-test-secret-123")
+    monkeypatch.setenv("ORACLE_ROUTER_TEST_KEY", "sk-test-secret-123")
     with pytest.raises(AdapterError) as ei:
-        OpenAICompatibleAdapter("m", f"http://127.0.0.1:{srv.server_port}", "LPSWARM_TEST_KEY").complete([])
+        OpenAICompatibleAdapter("m", f"http://127.0.0.1:{srv.server_port}", "ORACLE_ROUTER_TEST_KEY").complete([])
     srv.shutdown()
     assert "sk-test-secret-123" not in str(ei.value) and not ei.value.transient
 
@@ -495,18 +495,18 @@ def test_duplicate_generator_names_rejected(oracle):
 
 def test_program_family_import_order():
     import subprocess
-    code = "import lpswarm.programs.family; from lpswarm.ciphers import get_family; get_family('program')"
+    code = "import oracle_router.programs.family; from oracle_router.ciphers import get_family; get_family('program')"
     assert subprocess.run([sys.executable, "-c", code], capture_output=True).returncode == 0
 
 
 # ------------------------------------------------- prompt examples and schema
 def test_prompt_examples_are_valid_proposals():
     import re
-    from lpswarm.swarm.generators import EXAMPLES
+    from oracle_router.swarm.generators import EXAMPLES
     blocks = re.findall(r"\{\"spec\".*?\"why\": \"[^\"]*\"\}", EXAMPLES, re.S)
     assert len(blocks) == 10
-    from lpswarm.alphabet import get_alphabet
-    from lpswarm.programs import compile_spec
+    from oracle_router.alphabet import get_alphabet
+    from oracle_router.programs import compile_spec
     alpha = get_alphabet("data/alphabet/gematria_primus.json")
     for b in blocks:
         props, errs = parse_proposals(b)
@@ -516,7 +516,7 @@ def test_prompt_examples_are_valid_proposals():
 
 
 def test_schema_covers_examples_shape():
-    from lpswarm.swarm.generators import proposal_schema
+    from oracle_router.swarm.generators import proposal_schema
     sch = proposal_schema(4)
     assert sch["properties"]["proposals"]["maxItems"] == 4
     item = sch["properties"]["proposals"]["items"]
@@ -531,7 +531,7 @@ def test_structured_schema_reaches_ollama(stub):
     spec = ModelSpec("q", "ollama", "qwen", (Role.PROPOSER,), endpoint=stub)
     r = Router([spec], ledger=led)
     gen = LLMGenerator(r, "q")
-    from lpswarm.swarm.generators import GenContext
+    from oracle_router.swarm.generators import GenContext
     case = generate_case("caesar", 40, seed=1)
     gen.propose(GenContext("t", A, case.ciphertext, 1, 3))
     fmt = _Stub.seen[-1][2]["format"]
@@ -556,8 +556,8 @@ def test_skip_mode_validation_and_identity():
 
 
 def test_resolve_recovers_ambiguous_skips(oracle):
-    from lpswarm.ciphers import get_family
-    from lpswarm.programs.resolve import resolve_decrypt
+    from oracle_router.ciphers import get_family
+    from oracle_router.programs.resolve import resolve_decrypt
     bigram = oracle.bigram_table()
     fam = get_family("program")
     better = 0
@@ -587,7 +587,7 @@ def test_executor_uses_variant_nulls_for_resolved_specs(oracle):
     Executor(led, oracle, stop_file=None).run(Target(A, case.ciphertext, "v", is_synthetic=True),
                                               h, "program", ExplicitKeys([spec]))
     assert led.conn.execute("SELECT null_variant FROM result").fetchone()[0] == "skipdp:25"
-    from lpswarm.executor import final_check
+    from oracle_router.executor import final_check
     rows = final_check(led, oracle, led.targets()[0]["id"])
     assert rows and rows[0]["null_variant"] == "skipdp:25"
 
@@ -597,7 +597,7 @@ def test_ollama_think_flag_only_when_configured(stub):
     assert "think" not in _Stub.seen[-1][2]
     OllamaAdapter("qwen", stub, think=False).complete([{"role": "user", "content": "q"}])
     assert _Stub.seen[-1][2]["think"] is False
-    from lpswarm.router import make_adapter
+    from oracle_router.router import make_adapter
     ad = make_adapter(ModelSpec("q", "ollama", "qwen3:14b", (Role.PROPOSER,), endpoint=stub,
                                 extra={"think": False}))
     assert ad.think is False

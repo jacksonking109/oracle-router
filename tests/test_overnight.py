@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from lpswarm.ledger import Ledger
-from lpswarm.overnight import (Overnight, OvernightConfig, apply_supervisor_reply, expand_jobs,
+from oracle_router.ledger import Ledger
+from oracle_router.overnight import (Overnight, OvernightConfig, apply_supervisor_reply, expand_jobs,
                                load_config, manifest_sections, publish_results)
-from lpswarm.router import ModelSpec, RateLimited, Role, Router, ScriptedAdapter
+from oracle_router.router import ModelSpec, RateLimited, Role, Router, ScriptedAdapter
 
 ROOT = Path(__file__).resolve().parent.parent
 MANIFEST = str(ROOT / "data" / "lp" / "manifest.json")
@@ -77,14 +77,14 @@ def test_stop_file_then_resume(tmp_path, monkeypatch):
 def test_preflight_refuses_unsafe_api_models(tmp_path, monkeypatch):
     models = tmp_path / "m.toml"
     models.write_text('[models.ds]\nprovider = "openai_compatible"\nendpoint = "https://x.invalid"\n'
-                      'model = "m"\napi_key_env = "LPSWARM_T_KEY"\nroles = ["proposer"]\nmax_usd = 1.0\n',
+                      'model = "m"\napi_key_env = "ORACLE_ROUTER_T_KEY"\nroles = ["proposer"]\nmax_usd = 1.0\n',
                       encoding="utf-8")
     cfg = _cfg(tmp_path, [{"id": "j", "kind": "swarm", "args": ["--generators", "ds"]}])
     cfg.models = str(models)
     run = Overnight(cfg, tmp_path / "run", stop_file=tmp_path / "STOP", progress=False)
     assert "prices are 0" in run.preflight(run.state["jobs"][0])
     models.write_text(models.read_text(encoding="utf-8") + "price_in_per_mtok = 0.3\n", encoding="utf-8")
-    monkeypatch.delenv("LPSWARM_T_KEY", raising=False)
+    monkeypatch.delenv("ORACLE_ROUTER_T_KEY", raising=False)
     assert "not set" in run.preflight(run.state["jobs"][0])
 
 
@@ -136,7 +136,7 @@ def test_supervisor_tick_uses_router_and_survives_failure(tmp_path):
 
     class Down:
         def complete(self, messages, temperature=0.7, max_tokens=2048):
-            from lpswarm.router.cli_adapters import CLILimitError
+            from oracle_router.router.cli_adapters import CLILimitError
             import time
             raise CLILimitError("usage limit", time.time() + 600, True)
     run.router._models["sup"].adapter = Down()
@@ -201,7 +201,7 @@ def test_blocked_jobs_do_not_trigger_publish_or_supervisor(tmp_path, monkeypatch
     jobs = [{"id": f"j{i}", "kind": "swarm", "args": ["--generators", "ds"]} for i in range(5)]
     run = _sup_run(tmp_path, [json.dumps({"actions": []})])
     run.cfg.models = str(models)
-    run.state["jobs"] = [__import__("lpswarm.overnight", fromlist=["_job"])._job(j["id"], "swarm", j["args"], "config")
+    run.state["jobs"] = [__import__("oracle_router.overnight", fromlist=["_job"])._job(j["id"], "swarm", j["args"], "config")
                          for j in jobs]
     calls = {"publish": 0}
     monkeypatch.setattr(run, "publish", lambda: calls.__setitem__("publish", calls["publish"] + 1))
@@ -222,12 +222,12 @@ def test_retry_failed_resets_failed_and_blocked(tmp_path, monkeypatch):
 
 
 def test_tiertest_recheck_handles_resolved_specs(tmp_path):
-    from lpswarm.alphabet import Alphabet
-    from lpswarm.executor import Executor, ExplicitKeys, Target
-    from lpswarm.oracle import FullOracle, OracleConfig
-    from lpswarm.programs import compile_spec
-    from lpswarm.textgen.synth import generate_case
-    from lpswarm.validation.tiertest import _decrypt_attempt
+    from oracle_router.alphabet import Alphabet
+    from oracle_router.executor import Executor, ExplicitKeys, Target
+    from oracle_router.oracle import FullOracle, OracleConfig
+    from oracle_router.programs import compile_spec
+    from oracle_router.textgen.synth import generate_case
+    from oracle_router.validation.tiertest import _decrypt_attempt
     a = Alphabet.latin26()
     o = FullOracle(a, OracleConfig(null_samples=100, variant_null_samples=100))
     case = generate_case("caesar", 60, seed=3)
@@ -244,8 +244,8 @@ def test_tiertest_recheck_handles_resolved_specs(tmp_path):
 
 def test_router_call_log_and_transcript(tmp_path, monkeypatch, capsys):
     tr = tmp_path / "t.jsonl"
-    monkeypatch.setenv("LPSWARM_LOG_CALLS", "1")
-    monkeypatch.setenv("LPSWARM_TRANSCRIPT", str(tr))
+    monkeypatch.setenv("ORACLE_ROUTER_LOG_CALLS", "1")
+    monkeypatch.setenv("ORACLE_ROUTER_TRANSCRIPT", str(tr))
     r = Router([ModelSpec("codex", "scripted", "c", (Role.PROPOSER,))], ledger=Ledger(),
                adapters={"codex": ScriptedAdapter("codex", ["hello"], tokens=(12, 3))})
     r.complete("codex", [{"role": "user", "content": "q"}], role="proposer", task_id="x#r1")
@@ -256,7 +256,7 @@ def test_router_call_log_and_transcript(tmp_path, monkeypatch, capsys):
 
 
 def test_log_tail_skips_warning_noise(tmp_path):
-    from lpswarm.overnight import _log_tail
+    from oracle_router.overnight import _log_tail
     p = tmp_path / "job.log"
     p.write_text("round 1 [codex] proposals=8\nC:\\x\\router.py:106: UserWarning: prices are 0\n"
                  "  return cls(load_model_specs(path), ledger=ledger, **kw)\n"

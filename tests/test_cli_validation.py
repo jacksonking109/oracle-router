@@ -3,7 +3,7 @@ import sqlite3
 
 import pytest
 
-from lpswarm.cli import main
+from oracle_router.cli import main
 
 
 def test_validate_quick_writes_reports(tmp_path, capsys):
@@ -46,8 +46,8 @@ def test_baseline_demo_is_idempotent(tmp_path, capsys):
 
 
 def test_baseline_ciphertext_file_and_alphabet_json(tmp_path, capsys):
-    from lpswarm.alphabet import Alphabet
-    from lpswarm.ciphers import get_family
+    from oracle_router.alphabet import Alphabet
+    from oracle_router.ciphers import get_family
     a = Alphabet.latin26()
     pt = a.encode("IT WAS THE BEST OF TIMES IT WAS THE WORST OF TIMES IT WAS THE AGE OF WISDOM")
     ct = get_family("caesar").encrypt(pt, 7, 26)
@@ -73,7 +73,7 @@ def test_network_only_in_router_adapters():
     """Only the model adapters may open connections; everything else stays offline."""
     import pathlib
     import re
-    root = pathlib.Path(__file__).resolve().parent.parent / "src" / "lpswarm"
+    root = pathlib.Path(__file__).resolve().parent.parent / "src" / "oracle_router"
     pat = re.compile(r"^\s*(import|from)\s+(urllib|http|socket|requests|httpx|ssl)\b", re.M)
     offenders = sorted(str(p.relative_to(root)).replace("\\", "/") for p in root.rglob("*.py")
                        if pat.search(p.read_text(encoding="utf-8")))
@@ -82,7 +82,7 @@ def test_network_only_in_router_adapters():
 
 def test_model_config_parses_without_env():
     import pathlib
-    from lpswarm.router import NullRouter, Role, load_model_specs
+    from oracle_router.router import NullRouter, Role, load_model_specs
     p = pathlib.Path(__file__).resolve().parent.parent / "config" / "models.example.toml"
     specs = {s.name: s for s in load_model_specs(p)}
     assert specs["deepseek"].api_key_env == "DEEPSEEK_API_KEY"

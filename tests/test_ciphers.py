@@ -1,10 +1,10 @@
 import numpy as np
 import pytest
 
-from lpswarm.alphabet import Alphabet
-from lpswarm.ciphers import REGISTRY, VARIANTS, get_family
-from lpswarm.ciphers.families import Substitution
-from lpswarm.textgen.corpus import training_text
+from oracle_router.alphabet import Alphabet
+from oracle_router.ciphers import REGISTRY, VARIANTS, get_family
+from oracle_router.ciphers.families import Substitution
+from oracle_router.textgen.corpus import training_text
 
 ALPHABETS = [Alphabet.latin26(), Alphabet.rune_like(29, corpus=training_text()),
              Alphabet.rune_like(33, extra_tokens=["TH", "NG", "EA", "OE", "ST", "IO", "AE"])]

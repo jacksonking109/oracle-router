@@ -42,7 +42,7 @@
             "executor_version": "phase1-0.1.0",
             "git_sha": "c426a417a3c191fe82de819ea244cfb70f4be24a",
             "id": 1,
-            "lpswarm_version": "0.1.0",
+            "oracle_router_version": "0.1.0",
             "models": {
               "generators": [
                 "packet-exp1"
@@ -171,7 +171,7 @@
     "Transcription version is not recorded; identity is the target id only.",
     "History is not rescored: recorded thresholds and margins are shown as they were."
   ],
-  "schema": "lpswarm-coverage/1",
+  "schema": "oracle-router-coverage/1",
   "sections": [
     {
       "alphabet": "latin26",
@@ -411,7 +411,7 @@
               "executor_version": "phase1-0.1.0",
               "git_sha": "c426a417a3c191fe82de819ea244cfb70f4be24a",
               "id": 1,
-              "lpswarm_version": "0.1.0",
+              "oracle_router_version": "0.1.0",
               "models": {
                 "generators": [
                   "packet-exp1"
@@ -649,7 +649,7 @@
   ],
   "status": "complete",
   "tool": {
-    "name": "lpswarm",
+    "name": "oracle-router",
     "version": "0.1.0"
   }
 }

@@ -1,14 +1,14 @@
-# `lpswarm coverage`: what the ledgers record
+# `oracle-router coverage`: what the ledgers record
 
 A read-only inventory of recorded experiments. It reads job ledgers (SQLite) and writes two files:
 `coverage.json` (structured evidence) and `coverage.md` (a digest for people and planners). It never
 writes to a ledger, starts a job, calls a model or publishes anything.
 
 ```powershell
-.\.venv\Scripts\lpswarm.exe coverage                       # all runs under reports\overnight
-.\.venv\Scripts\lpswarm.exe coverage --latest 1            # newest run only
-.\.venv\Scripts\lpswarm.exe coverage --run 20261104-2305   # named run(s)
-.\.venv\Scripts\lpswarm.exe coverage --ledger lp.sqlite --ledger other.sqlite --out reports\mine
+.\.venv\Scripts\oracle-router.exe coverage                       # all runs under reports\overnight
+.\.venv\Scripts\oracle-router.exe coverage --latest 1            # newest run only
+.\.venv\Scripts\oracle-router.exe coverage --run 20261104-2305   # named run(s)
+.\.venv\Scripts\oracle-router.exe coverage --ledger lp.sqlite --ledger other.sqlite --out reports\mine
 ```
 
 ## Inputs
@@ -81,7 +81,7 @@ table or column is reported `unsupported_schema` and is **not** treated as empty
 ## Evidence recorded by new runs (older ledgers: `unknown`)
 
 **Evidence manifest.** Each `swarm`/`baseline` invocation appends a row to the ledger's `run_meta`
-table: lpswarm and executor version, development git SHA (`unknown` plus the reason if it cannot be
+table: oracle-router and executor version, development git SHA (`unknown` plus the reason if it cannot be
 read), Python/platform, the **actual oracle configuration** after command-line overrides (and its
 hash), a hash of the bundled language texts, the alphabet and manifest hashes, the target labels with
 their recorded section hashes, resource caps, and the generator/ranker model *names*. No credentials,
