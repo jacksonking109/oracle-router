@@ -1,11 +1,11 @@
 import numpy as np
 import pytest
 
-from lpswarm.alphabet import Alphabet
-from lpswarm.oracle import (FAIL, NEAR_MISS, PASS, CoarseOracle, FullOracle, OracleConfig,
+from oracle_router.alphabet import Alphabet
+from oracle_router.oracle import (FAIL, NEAR_MISS, PASS, CoarseOracle, FullOracle, OracleConfig,
                             null_fpr_check)
-from lpswarm.oracle.signals import Dictionary, NgramModel, index_of_coincidence
-from lpswarm.textgen.synth import generate_cases, heldout_cases
+from oracle_router.oracle.signals import Dictionary, NgramModel, index_of_coincidence
+from oracle_router.textgen.synth import generate_cases, heldout_cases
 
 
 def test_ic_values():
@@ -15,7 +15,7 @@ def test_ic_values():
 
 
 def test_ngram_prefers_language(latin):
-    from lpswarm.textgen.corpus import training_text
+    from oracle_router.textgen.corpus import training_text
     arr = latin.encode(training_text())
     m = NgramModel.train(arr, 26, 3)
     eng = latin.encode("THEQUICKBROWNFOXJUMPSOVERTHELAZYDOG")
@@ -65,7 +65,7 @@ def test_coarse_api_hides_numbers(oracle, latin):
 
 
 def test_rune_like_alphabet_oracle():
-    from lpswarm.textgen.corpus import training_text
+    from oracle_router.textgen.corpus import training_text
     a = Alphabet.rune_like(29, corpus=training_text())
     o = FullOracle(a, OracleConfig(null_samples=300))
     c = heldout_cases(["vigenere"], [80], 2, alphabet=a, seed=6)
@@ -81,15 +81,15 @@ def test_lm_slot_is_numeric_and_recorded(latin):
 
 
 def test_heldout_guard():
-    import lpswarm.textgen.synth as synth
+    import oracle_router.textgen.synth as synth
     # Simulate a non-validation caller.
-    g = {"__name__": "lpswarm.swarm.generator", "synth": synth}
+    g = {"__name__": "oracle_router.swarm.generator", "synth": synth}
     with pytest.raises(PermissionError):
         exec("def f():\n    return synth.heldout_cases(['caesar'], [30], 1)\nf()", g)
 
 
 def test_word_boundaries_from_text():
-    from lpswarm.alphabet import Alphabet, word_spans
+    from oracle_router.alphabet import Alphabet, word_spans
     a = Alphabet.latin26()
     b = []
     arr = a.encode("the cat\nsat • on  mat", boundaries=b)
@@ -97,10 +97,10 @@ def test_word_boundaries_from_text():
 
 
 def test_word_breaks_change_target_identity_and_null_fpr(oracle):
-    from lpswarm.ledger import target_id_for
-    from lpswarm.oracle import null_fpr_check
+    from oracle_router.ledger import target_id_for
+    from oracle_router.oracle import null_fpr_check
     c = heldout_cases(["caesar"], [40], 1, seed=8)[0]
-    from lpswarm.textgen.synth import case_breaks
+    from oracle_router.textgen.synth import case_breaks
     b = case_breaks(c, oracle.alphabet)
     assert target_id_for(oracle.alphabet, c.ciphertext) != target_id_for(oracle.alphabet, c.ciphertext, b)
     rep = oracle.score(c.plaintext, attempt_count=1000, breaks=b)

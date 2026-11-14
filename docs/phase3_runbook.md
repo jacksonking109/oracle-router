@@ -1,4 +1,4 @@
-# Phase 3 runbook (Windows, at home)
+# Phase 3 runbook (Windows)
 
 The model tier test asks one question: do model-driven generators find ciphers better
 than (a) the Phase 1 brute force and (b) random programs from the same cipher language, at
@@ -9,13 +9,13 @@ comparable cost? Everything below runs from the repo root in PowerShell, with th
 In PowerShell (needs git and Python 3.11+; the script installs Ollama with winget if it is missing):
 
 ```powershell
-git clone -b claude/eager-pasteur-l0dsma https://github.com/jacksonking109/liberprimus-search
-cd liberprimus-search
+git clone https://github.com/jacksonking109/oracle-router
+cd oracle-router
 powershell -ExecutionPolicy Bypass -File scripts\setup_windows.ps1
 ```
 
 What it does, step by step (each line prints OK / WARN / FAIL; safe to re-run):
-1. Finds Python 3.11+, creates `.venv`, installs lpswarm.
+1. Finds Python 3.11+, creates `.venv`, installs oracle-router.
 2. Installs Ollama if missing, finds your GPUs with `nvidia-smi`, and starts one Ollama server per
    GPU: the biggest card (5060 Ti) on port 11434 for the proposer models, the smallest (2060) on
    11435 for the ranker. Each server only sees its own GPU.
@@ -24,17 +24,17 @@ What it does, step by step (each line prints OK / WARN / FAIL; safe to re-run):
    `-ProposerModels`, `-ExtraModels`, `-RankerModels`.
 4. Writes `config\models.toml` with whatever actually pulled (an existing file is kept; use
    `-Force` to regenerate).
-5. Runs the tests, `lpswarm doctor`, and an offline dry run, then prints the next commands.
+5. Runs the tests, `oracle-router doctor`, and an offline dry run, then prints the next commands.
 
 After a reboot, only this is needed before a run:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\start_ollama.ps1
-.\.venv\Scripts\lpswarm.exe doctor
+.\.venv\Scripts\oracle-router.exe doctor
 ```
 
 `-ExecutionPolicy Bypass` applies to that one PowerShell process only. Use
-`.\.venv\Scripts\lpswarm.exe` (no venv activation needed), or activate with
+`.\.venv\Scripts\oracle-router.exe` (no venv activation needed), or activate with
 `.\.venv\Scripts\Activate.ps1` if your execution policy allows scripts. Stop the servers with
 `scripts\start_ollama.ps1 -Stop`. The Ollama tray app is closed while the pinned servers run;
 starting it again takes over port 11434 with both GPUs.
@@ -66,19 +66,19 @@ $env:DEEPSEEK_API_KEY = "..." # this session only; never put it in the file
 ## 2. Dry run (no network, no cost)
 
 ```powershell
-lpswarm tiertest --models config\models.toml --arms dry --quick --out reports\dry
-lpswarm swarm --demo program:120 --models config\models.toml --generators dry --rounds 2 --ledger reports\dry\swarm.sqlite
+oracle-router tiertest --models config\models.toml --arms dry --quick --out reports\dry
+oracle-router swarm --demo program:120 --models config\models.toml --generators dry --rounds 2 --ledger reports\dry\swarm.sqlite
 ```
 
 ## 3. Smoke test each real model
 
 ```powershell
-lpswarm tiertest --models config\models.toml --arms qwen-local --quick --out reports\smoke-qwen
-lpswarm tiertest --models config\models.toml --arms deepseek --quick --max-usd 0.50 --out reports\smoke-deepseek
+oracle-router tiertest --models config\models.toml --arms qwen-local --quick --out reports\smoke-qwen
+oracle-router tiertest --models config\models.toml --arms deepseek --quick --max-usd 0.50 --out reports\smoke-deepseek
 ```
 
 Look at `reports\smoke-*\tiertest_cases.csv`: `model_calls` > 0, and few invalid proposals
-(`lpswarm swarm` prints `invalid=` per round). If a local model returns invalid JSON, try
+(`oracle-router swarm` prints `invalid=` per round). If a local model returns invalid JSON, try
 `json_mode = true` or a bigger model.
 
 ## 4. The tier test
@@ -86,7 +86,7 @@ Look at `reports\smoke-*\tiertest_cases.csv`: `model_calls` > 0, and few invalid
 Same held-out cases for every arm; each arm gets its own ledger in `--out`.
 
 ```powershell
-lpswarm tiertest --models config\models.toml `
+oracle-router tiertest --models config\models.toml `
   --arms baseline,random_program:2000,random_program:40,qwen-local,gemma-local,deepseek `
   --lengths 80,160 --cases 10 --rounds 5 --per-round 8 --max-usd 5 --out reports\tier1
 ```
@@ -107,7 +107,7 @@ lpswarm tiertest --models config\models.toml `
 The `claude_code` and `codex` providers run the official CLIs signed in with your own account,
 so calls use your plan's included usage, not API billing:
 
-- Only the unmodified CLI is run; lpswarm never reads or stores its login.
+- Only the unmodified CLI is run; oracle-router never reads or stores its login.
 - Each call runs in a fresh empty temp folder. Claude Code runs with tools off, Codex in a
   read-only sandbox, so they answer as chat models and cannot touch the repo, ledger or oracle.
 - `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `CODEX_API_KEY` are removed from the CLI's
@@ -116,37 +116,37 @@ so calls use your plan's included usage, not API billing:
   Codex: check OpenAI's current terms for automated `codex exec` use before enabling it.
 
 Usage limits (the 5-hour windows):
-- lpswarm counts its own calls per model in a rolling window (`window_hours`, default 5) and
+- oracle-router counts its own calls per model in a rolling window (`window_hours`, default 5) and
   pauses when `max_calls_per_window` is reached, until the oldest call ages out.
-- When the CLI replies that a usage limit was hit, lpswarm records the reset time (from the
+- When the CLI replies that a usage limit was hit, oracle-router records the reset time (from the
   message, or a 30-minute cool-down if none is given) and pauses that model until then.
 - While one model is paused, other generators keep working; if all are paused, the run waits
   (create `STOP` to end it). `wait_on_rate_limit = false` in a `[swarm]` config section stops instead.
 - Both are stored in the ledger, so they carry over between runs. The real limit is shared with
-  your other use of the plan (chat, IDE), which lpswarm cannot see.
-- `lpswarm doctor` shows calls in the current window and any active pause per model.
+  your other use of the plan (chat, IDE), which oracle-router cannot see.
+- `oracle-router doctor` shows calls in the current window and any active pause per model.
 
 ```powershell
 claude                 # sign in once (interactive), then exit
-.\.venv\Scripts\lpswarm.exe doctor --ping   # one tiny real call per model
-.\.venv\Scripts\lpswarm.exe tiertest --models config\models.toml --arms claude-opus,claude-sonnet --cases 3 --out reports\tier-claude
+.\.venv\Scripts\oracle-router.exe doctor --ping   # one tiny real call per model
+.\.venv\Scripts\oracle-router.exe tiertest --models config\models.toml --arms claude-opus,claude-sonnet --cases 3 --out reports\tier-claude
 ```
 
 With 5 rounds per case, 3 cases at 2 lengths is about 30 calls: inside one 40-call window.
 
 ## 4c. Unattended runs
 
-`scripts\overnight.ps1` runs the queue in `config\overnight.toml` with `lpswarm overnight`:
+`scripts\overnight.ps1` runs the queue in `config\overnight.toml` with `oracle-router overnight`:
 resumable, per-job logs and reports, `SUMMARY.md`, optional Claude Code supervisor (menu actions
-only), results pushed to the `results` branch. See START_HERE.md section 7.
+only), results pushed to the `results` branch. The example queue is `config/overnight.example.toml`.
 
 ## 5. Real sections (optional, after the tier test)
 
 ```powershell
-lpswarm swarm --manifest data\lp\manifest.json --alphabet data\alphabet\gematria_primus.json `
+oracle-router swarm --manifest data\lp\manifest.json --alphabet data\alphabet\gematria_primus.json `
   --sections 10,22 --models config\models.toml --generators qwen-local,deepseek `
   --rounds 5 --per-round 8 --max-usd 2 --ledger lp.sqlite
-lpswarm leads --ledger lp.sqlite --near-miss
+oracle-router leads --ledger lp.sqlite --near-miss
 ```
 
 Caveats:

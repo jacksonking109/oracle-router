@@ -67,7 +67,7 @@ jobs:
           powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup_windows.ps1 -SkipModels -SkipTests
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Get-Content config\models.toml
-          .\.venv\Scripts\lpswarm.exe doctor --models config\models.toml
+          .\.venv\Scripts\oracle-router.exe doctor --models config\models.toml
           if (-not (Test-Path reports\dry\tiertest.md)) { Write-Host "dry run report missing"; exit 1 }
       - name: Overnight queue with a scripted supervisor (no publish)
         shell: powershell
@@ -90,7 +90,7 @@ jobs:
           kind = "swarm"
           args = ["--manifest", "data/lp/manifest.json", "--alphabet", "data/alphabet/gematria_primus.json", "--sections", "9", "--generators", "random_program", "--rounds", "1", "--null-samples", "200"]
           '@ | Set-Content -Encoding ascii config\ci_overnight.toml
-          .\.venv\Scripts\lpswarm.exe overnight --config config\ci_overnight.toml --no-publish
+          .\.venv\Scripts\oracle-router.exe overnight --config config\ci_overnight.toml --no-publish
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $sum = Get-ChildItem reports\overnight -Recurse -Filter SUMMARY.md | Select-Object -First 1
           Get-Content $sum.FullName

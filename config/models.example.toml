@@ -14,8 +14,8 @@
 #   roles       any of "proposer" (proposes cipher programs), "weighting" (ranks
 #               proposals), "triage" (reserved)
 #   max_usd     spend cap per model, checked against logged spend before every call.
-#               It counts spend in one ledger: the --ledger of `lpswarm swarm`, or
-#               reports/model_spend.sqlite for `lpswarm tiertest`. A single call can
+#               It counts spend in one ledger: the --ledger of `oracle-router swarm`, or
+#               reports/model_spend.sqlite for `oracle-router tiertest`. A single call can
 #               overshoot by its own cost.
 #   price_in_per_mtok / price_out_per_mtok   USD per million tokens, used for cost
 #               tracking and max_usd. Leave 0 for local models. If you leave them 0
@@ -90,7 +90,7 @@ replies = ['{"proposals": [{"spec": {"stream": {"kind": "sequence", "name": "pri
 # max_calls_per_window; when the CLI reports a usage limit it pauses until the reset
 # (or a 30 min cool-down if no time is given). Your other use of the plan (chat, IDE)
 # shares the same real limit. The cap is checked live, so raising it takes effect on the
-# next call. Check status: lpswarm doctor (it shows the whole group's calls)
+# next call. Check status: oracle-router doctor (it shows the whole group's calls)
 #
 # All Claude models share ONE plan quota: quota_group makes their calls count together
 # and a usage limit hit by any of them pauses all. max_calls_per_window is the shared
@@ -116,7 +116,7 @@ replies = ['{"proposals": [{"spec": {"stream": {"kind": "sequence", "name": "pri
 # style = "exploratory"
 # per_round = 12                    # more proposals per call = fewer Claude calls
 #
-# Supervisor for `lpswarm overnight` (answers with menu actions only; tools stay off).
+# Supervisor for `oracle-router overnight` (answers with menu actions only; tools stay off).
 # [models.claude-supervisor]
 # provider = "claude_code"
 # model = "opus"

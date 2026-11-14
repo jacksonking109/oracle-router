@@ -3,7 +3,7 @@
   Start (or resume) the unattended job queue in config\overnight.toml.
 
 .DESCRIPTION
-  Starts the GPU-pinned Ollama servers, then runs `lpswarm overnight`. Re-running this
+  Starts the GPU-pinned Ollama servers, then runs `oracle-router overnight`. Re-running this
   script resumes an unfinished run. Results: reports\overnight\<run>\SUMMARY.md, and the
   `results` branch on GitHub if publish = true in config\overnight.toml.
 
@@ -33,9 +33,9 @@ param(
 $ErrorActionPreference = "Continue"
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
-$Lpswarm = Join-Path $Root ".venv\Scripts\lpswarm.exe"
+$Lpswarm = Join-Path $Root ".venv\Scripts\oracle-router.exe"
 if (-not (Test-Path $Lpswarm)) {
-    Write-Host "lpswarm is not installed yet: run scripts\setup_windows.ps1 first" -ForegroundColor Red
+    Write-Host "oracle-router is not installed yet: run scripts\setup_windows.ps1 first" -ForegroundColor Red
     exit 1
 }
 if (-not (Test-Path (Join-Path $Root "config\overnight.toml"))) {

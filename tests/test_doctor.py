@@ -4,8 +4,8 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytest
 
-from lpswarm.cli import main
-from lpswarm.doctor import FAIL, OK, WARN, run_checks
+from oracle_router.cli import main
+from oracle_router.doctor import FAIL, OK, WARN, run_checks
 
 
 class _Tags(BaseHTTPRequestHandler):
@@ -52,7 +52,7 @@ model = "gemma3:12b"
 provider = "openai_compatible"
 endpoint = "https://example.invalid"
 model = "x"
-api_key_env = "LPSWARM_DOCTOR_TEST_KEY"
+api_key_env = "ORACLE_ROUTER_DOCTOR_TEST_KEY"
 max_usd = 1.0
 {extra}
 """, encoding="utf-8")
@@ -64,7 +64,7 @@ def _by_name(checks):
 
 
 def test_doctor_reports_models(tmp_path, ollama_stub, monkeypatch):
-    monkeypatch.delenv("LPSWARM_DOCTOR_TEST_KEY", raising=False)
+    monkeypatch.delenv("ORACLE_ROUTER_DOCTOR_TEST_KEY", raising=False)
     checks = _by_name(run_checks(_cfg(tmp_path, ollama_stub)))
     assert checks["model qwen"].status == OK
     assert checks["model granite"].status == OK
@@ -74,7 +74,7 @@ def test_doctor_reports_models(tmp_path, ollama_stub, monkeypatch):
 
 
 def test_doctor_never_prints_key_and_flags_zero_prices(tmp_path, ollama_stub, monkeypatch, capsys):
-    monkeypatch.setenv("LPSWARM_DOCTOR_TEST_KEY", "sk-doctor-secret")
+    monkeypatch.setenv("ORACLE_ROUTER_DOCTOR_TEST_KEY", "sk-doctor-secret")
     checks = _by_name(run_checks(_cfg(tmp_path, ollama_stub)))
     assert checks["model api"].status == WARN and "prices are 0" in checks["model api"].detail
     rc = main(["doctor", "--models", _cfg(tmp_path, ollama_stub)])

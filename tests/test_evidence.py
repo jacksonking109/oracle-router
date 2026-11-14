@@ -6,12 +6,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from lpswarm import coverage as C
-from lpswarm import runmeta
-from lpswarm.ledger import Ledger
-from lpswarm.oracle import OracleConfig
-from lpswarm.programs import describe, expand_iter, expansion_size
-from lpswarm.programs.spec import EXPANSION_VERSION, canonical
+from oracle_router import coverage as C
+from oracle_router import runmeta
+from oracle_router.ledger import Ledger
+from oracle_router.oracle import OracleConfig
+from oracle_router.programs import describe, expand_iter, expansion_size
+from oracle_router.programs.spec import EXPANSION_VERSION, canonical
 
 from test_coverage import CT, ORACLE, SWEEP, SWEEP_N, TARGET, Executor, ExplicitKeys, cover, only_section, ordinary
 
@@ -21,7 +21,7 @@ SPEC = {"spec_json": canonical(SWEEP), "expansion_version": EXPANSION_VERSION, "
 
 
 def sweep(path, max_attempts=None, lean_spec=SPEC):
-    from lpswarm.programs import spec_hash
+    from oracle_router.programs import spec_hash
     with Ledger(path) as led:
         h = led.add_hypothesis("program", "all 2-keys", "sonnet", "proposer")
         s = Executor(led, ORACLE, stop_file=None, max_attempts=max_attempts).run(
@@ -120,7 +120,7 @@ def test_old_ledger_without_checkpoint_columns_is_migrated_and_still_reads(tmp_p
 
 
 def Alphabet_latin():
-    from lpswarm.alphabet import Alphabet
+    from oracle_router.alphabet import Alphabet
     return Alphabet.latin26()
 
 
@@ -143,7 +143,7 @@ def test_run_meta_is_recorded_and_coverage_separates_configurations(tmp_path):
     assert cfgs == {200, 300} and all(len(g["oracle_config_hash"]) == 64 for g in groups)
     assert all(g["git_shas"] for g in groups)
     src = rep["inputs"]["ledgers"][0]
-    assert src["run_meta"][0]["command"] == "swarm" and src["run_meta"][0]["lpswarm_version"]
+    assert src["run_meta"][0]["command"] == "swarm" and src["run_meta"][0]["oracle_router_version"]
     # a ledger without run_meta is unknown, never given today's defaults
     old = ordinary(tmp_path / "old.sqlite")
     g = only_section(cover(old))["evaluator_groups"][0]
@@ -160,7 +160,7 @@ def test_one_ledger_used_with_two_configurations_is_flagged_not_attributed(tmp_p
 
 
 def test_capture_failure_is_explicit_and_never_filled_in(tmp_path, monkeypatch, capsys):
-    from lpswarm import cli
+    from oracle_router import cli
     p = ordinary(tmp_path / "f.sqlite")
 
     def boom(*a, **k):
@@ -181,7 +181,7 @@ def test_capture_failure_is_explicit_and_never_filled_in(tmp_path, monkeypatch, 
 def test_metadata_holds_no_secrets_and_only_hashes_of_config_files(tmp_path):
     secret_cfg = tmp_path / "overnight.toml"
     secret_cfg.write_text('api_key = "SECRET-IN-FILE"\n[overnight]\n', encoding="utf-8")
-    from lpswarm.overnight import OvernightConfig
+    from oracle_router.overnight import OvernightConfig
     cfg = OvernightConfig(models=str(secret_cfg), supervisor="claude-supervisor",
                           jobs=[{"id": "codex", "kind": "swarm", "args": ["--api-key", "SECRET-ARG"]}])
     path = runmeta.write_run_manifest(tmp_path, cfg, str(secret_cfg))

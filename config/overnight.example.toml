@@ -1,4 +1,4 @@
-# Unattended queue for `lpswarm overnight` (copy to config/overnight.toml and edit).
+# Unattended queue for `oracle-router overnight` (copy to config/overnight.toml and edit).
 # Re-running the same command resumes an unfinished run. Create a file named STOP in the
 # repo folder to stop cleanly. Results: reports/overnight/<run>/SUMMARY.md (and, with
 # publish = true, the `results` branch on GitHub).
@@ -15,7 +15,7 @@ publish = true                                # push report files to the `result
 results_branch = "results"
 max_added_jobs = 5                            # cap on jobs the supervisor may add per run
 min_free_gb = 15                              # no new jobs below this much free disk; the run stops
-                                              # cleanly (resumable) below a third of it. See: lpswarm disk
+                                              # cleanly (resumable) below a third of it. See: oracle-router disk
 max_parallel = 4                              # jobs at once; only jobs on different backends
                                               # (Claude plan, Codex plan, each GPU, an API) run
                                               # side by side, others wait in queue order

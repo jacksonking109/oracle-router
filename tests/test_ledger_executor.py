@@ -1,10 +1,10 @@
 import numpy as np
 import pytest
 
-from lpswarm.executor import (EnumeratedKeys, Executor, ExplicitKeys, Target, TextKeys,
+from oracle_router.executor import (EnumeratedKeys, Executor, ExplicitKeys, Target, TextKeys,
                               WordlistKeys)
-from lpswarm.ledger import Ledger
-from lpswarm.textgen.synth import heldout_cases
+from oracle_router.ledger import Ledger
+from oracle_router.textgen.synth import heldout_cases
 
 
 def _target(latin, case):
@@ -85,7 +85,7 @@ def test_wordlist_and_running_key_sources(latin, oracle):
         {"offset_lo": max(0, off - 20), "offset_hi": off + 20})
     assert s.passes >= 1 and s.hits[0].params["offset"] == off
     wl = WordlistKeys(["key", "KEY", "secret", "a"], latin, min_len=2)
-    from lpswarm.ciphers import get_family
+    from oracle_router.ciphers import get_family
     ks = list(wl.candidates(get_family("vigenere"), 26, 50))
     assert [k.label for k in ks] == ["key", "secret"]
     assert list(wl.candidates(get_family("caesar"), 26, 50)) == []

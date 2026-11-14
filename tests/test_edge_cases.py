@@ -5,12 +5,12 @@ import warnings
 import numpy as np
 import pytest
 
-from lpswarm.alphabet import Alphabet, get_alphabet
-from lpswarm.ciphers import get_family
-from lpswarm.executor import EnumeratedKeys, Executor, ExplicitKeys, Target, final_check
-from lpswarm.ledger import Ledger, canonical_json, dedupe_hash
-from lpswarm.oracle import FullOracle, OracleConfig
-from lpswarm.textgen.synth import heldout_cases
+from oracle_router.alphabet import Alphabet, get_alphabet
+from oracle_router.ciphers import get_family
+from oracle_router.executor import EnumeratedKeys, Executor, ExplicitKeys, Target, final_check
+from oracle_router.ledger import Ledger, canonical_json, dedupe_hash
+from oracle_router.oracle import FullOracle, OracleConfig
+from oracle_router.textgen.synth import heldout_cases
 
 
 # ------------------------------------------------------------------ alphabet
@@ -125,7 +125,7 @@ def test_length_limits(oracle, latin):
     with pytest.raises(ValueError, match="too short"):
         oracle.calibrate(3)
     assert oracle.scored_length(10_000_000) == oracle.cfg.max_score_length
-    from lpswarm.textgen.corpus import training_text
+    from oracle_router.textgen.corpus import training_text
     small = FullOracle(latin, OracleConfig(null_samples=100, max_score_length=5000),
                        training_texts={"english": training_text()[:3000]})
     with pytest.raises(ValueError, match="too long"):
@@ -151,7 +151,7 @@ def test_spending_mode_sums_below_alpha(latin):
 
 
 def test_supplied_training_text_builds_its_own_dictionary(latin):
-    from lpswarm.textgen.corpus import training_text
+    from oracle_router.textgen.corpus import training_text
     o = FullOracle(latin, OracleConfig(null_samples=100, languages=("klingon",)),
                    training_texts={"klingon": training_text()[:300_000]})
     assert o.training_sources["klingon"] == ["<supplied text>"]
@@ -180,7 +180,7 @@ def test_empty_search_space_is_not_ruled_out(latin, oracle):
     led = Ledger()
     case = heldout_cases(["caesar"], [60], 1, seed=12)[0]
     h = led.add_hypothesis("running_key", "short text", "human", "human")
-    from lpswarm.executor import TextKeys
+    from oracle_router.executor import TextKeys
     s = Executor(led, oracle, stop_file=None).run(
         _tgt(latin, case), h, "running_key", TextKeys([("short", np.zeros(10, dtype=np.int16))]))
     assert s.stopped == "empty_search_space"
@@ -255,7 +255,7 @@ def test_final_check_is_order_independent(latin, oracle):
 
 
 def test_baseline_timeout_is_per_family(tmp_path, latin, oracle):
-    from lpswarm.baseline import BaselineConfig, run_baseline
+    from oracle_router.baseline import BaselineConfig, run_baseline
     led = Ledger()
     case = heldout_cases(["caesar"], [60], 1, seed=16)[0]
     res = run_baseline(_tgt(latin, case), led, oracle, ["KEY", "WORD"],
@@ -265,13 +265,13 @@ def test_baseline_timeout_is_per_family(tmp_path, latin, oracle):
 
 
 def test_user_corpus_overlapping_heldout_is_refused(tmp_path, monkeypatch):
-    from lpswarm.textgen import corpus
+    from oracle_router.textgen import corpus
     d = tmp_path / "corpora" / "english"
     d.mkdir(parents=True)
     (d / "leak.txt").write_text(corpus._heldout_text()[10_000:20_000], encoding="utf-8")
     (d / "ok.txt").write_text("An entirely new sentence about owls and lanterns. " * 50,
                               encoding="utf-8")
-    monkeypatch.setenv("LPSWARM_DATA", str(tmp_path))
+    monkeypatch.setenv("ORACLE_ROUTER_DATA", str(tmp_path))
     with pytest.warns(UserWarning, match="overlaps the held-out"):
         src = corpus.training_sources()
     assert any(s.endswith("ok.txt") for s in src) and not any(s.endswith("leak.txt") for s in src)

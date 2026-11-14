@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  One-command setup for lpswarm on Windows: Python venv, Ollama, models pinned to
+  One-command setup for oracle-router on Windows: Python venv, Ollama, models pinned to
   GPUs, config\models.toml, tests, health check and a dry run.
 
 .DESCRIPTION
@@ -42,7 +42,7 @@ $RankerModels = Split-List $RankerModels
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 $VenvPy = Join-Path $Root ".venv\Scripts\python.exe"
-$Lpswarm = Join-Path $Root ".venv\Scripts\lpswarm.exe"
+$Lpswarm = Join-Path $Root ".venv\Scripts\oracle-router.exe"
 $ModelsToml = Join-Path $Root "config\models.toml"
 $GpuFile = Join-Path $Root "config\gpus.json"
 $script:Problems = @()
@@ -93,11 +93,11 @@ if (-not (Test-Path $VenvPy)) {
     & $pyExe @pyArgs -m venv .venv
     if ($LASTEXITCODE -ne 0) { Stop-Setup "could not create .venv" }
 }
-Write-Step "...." "installing lpswarm and dependencies into .venv (first time takes a minute)"
+Write-Step "...." "installing oracle-router and dependencies into .venv (first time takes a minute)"
 & $VenvPy -m pip install --quiet --upgrade pip
 & $VenvPy -m pip install --quiet -e ".[dev]"
 if ($LASTEXITCODE -ne 0) { Stop-Setup "pip install failed (see the messages above)" }
-Write-Step "OK" "lpswarm installed in .venv"
+Write-Step "OK" "oracle-router installed in .venv"
 
 # ------------------------------------------------------- 3-6. Ollama and models
 $proposerTag = $null
@@ -276,12 +276,12 @@ After each reboot, start the GPU-pinned Ollama servers:
     powershell -ExecutionPolicy Bypass -File scripts\start_ollama.ps1
 
 Local models only (free):
-    .\.venv\Scripts\lpswarm.exe tiertest --models config\models.toml --arms $($arms -join ',')$rankerFlag --lengths 80,160 --cases 10 --out reports\tier1
+    .\.venv\Scripts\oracle-router.exe tiertest --models config\models.toml --arms $($arms -join ',')$rankerFlag --lengths 80,160 --cases 10 --out reports\tier1
 
 To add DeepSeek:
   1. Put the prices in config\models.toml (price_in_per_mtok / price_out_per_mtok).
   2. In this PowerShell window:  `$env:DEEPSEEK_API_KEY = "<your key>"
-  3. .\.venv\Scripts\lpswarm.exe doctor --ping
+  3. .\.venv\Scripts\oracle-router.exe doctor --ping
   4. Add ,deepseek to --arms and keep --max-usd small for the first run.
 
 More: docs\phase3_runbook.md
@@ -291,7 +291,7 @@ if ($hasClaudeModel) {
     Write-Host @"
 Claude Code on your plan (paces itself to the call cap; pauses at usage limits).
 Sign in once by running: claude    then:
-    .\.venv\Scripts\lpswarm.exe tiertest --models config\models.toml --arms claude-opus,claude-sonnet --lengths 80,160 --cases 3 --out reports\tier-claude
+    .\.venv\Scripts\oracle-router.exe tiertest --models config\models.toml --arms claude-opus,claude-sonnet --lengths 80,160 --cases 3 --out reports\tier-claude
 "@
 }
 

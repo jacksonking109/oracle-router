@@ -9,9 +9,9 @@ from pathlib import Path
 
 import pytest
 
-from lpswarm.alphabet import Alphabet
-from lpswarm.ciphers import get_family
-from lpswarm.oracle import FullOracle, OracleConfig
+from oracle_router.alphabet import Alphabet
+from oracle_router.ciphers import get_family
+from oracle_router.oracle import FullOracle, OracleConfig
 
 ROOT = Path(__file__).resolve().parent.parent
 ALPHA = ROOT / "data" / "alphabet" / "gematria_primus.json"
@@ -77,8 +77,8 @@ def test_word_breaks_rescue_the_short_solved_section(lp):
 def test_skip_resolution_decodes_the_skip_f_sections(lp):
     """03-04 (DIVINITY) and 14-15 (FIRFUMFERENFE): keys as given by the source, every
     plaintext F written in clear. Resolving which F runes are literal decodes both."""
-    from lpswarm.programs import compile_spec
-    from lpswarm.programs.resolve import resolve_decrypt
+    from oracle_router.programs import compile_spec
+    from oracle_router.programs.resolve import resolve_decrypt
     a, ct, oracle = lp
     bigram = oracle.bigram_table()
     for label, key, start in (("03.jpg-04.jpg", [6, 19, 28, 19, 20, 19, 13, 3], "WELCOMEWELCOMEPILGRIM"),

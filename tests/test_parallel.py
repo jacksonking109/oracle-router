@@ -5,9 +5,9 @@ import threading
 import time
 from pathlib import Path
 
-from lpswarm.ledger import Ledger
-from lpswarm.overnight import Overnight, OvernightConfig
-from lpswarm.router import ModelSpec, RateLimited, Role, Router, ScriptedAdapter, backend_key
+from oracle_router.ledger import Ledger
+from oracle_router.overnight import Overnight, OvernightConfig
+from oracle_router.router import ModelSpec, RateLimited, Role, Router, ScriptedAdapter, backend_key
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -59,7 +59,7 @@ def test_reply_pause_still_holds(tmp_path):
 
 
 def test_doctor_counts_the_whole_quota_group(tmp_path):
-    from lpswarm.doctor import run_checks
+    from oracle_router.doctor import run_checks
     led_path = tmp_path / "spend.sqlite"
     led = Ledger(led_path)
     for n in ("claude-opus", "claude-opus", "claude-supervisor"):
@@ -127,11 +127,11 @@ class _FakeRouter:
 
 
 def _run(gens, parallel):
-    from lpswarm.alphabet import Alphabet
-    from lpswarm.executor import Target
-    from lpswarm.oracle import FullOracle, OracleConfig
-    from lpswarm.swarm import SwarmConfig, run_swarm
-    from lpswarm.textgen.synth import generate_case
+    from oracle_router.alphabet import Alphabet
+    from oracle_router.executor import Target
+    from oracle_router.oracle import FullOracle, OracleConfig
+    from oracle_router.swarm import SwarmConfig, run_swarm
+    from oracle_router.textgen.synth import generate_case
     a = Alphabet.latin26()
     case = generate_case("caesar", 60, seed=1)
     t0 = time.monotonic()
@@ -239,7 +239,7 @@ def test_cap_raised_in_config_lifts_pause_without_restart(tmp_path):
 
 
 def test_swarm_wait_ends_when_pause_lifts():
-    from lpswarm.swarm.loop import _wait_until
+    from oracle_router.swarm.loop import _wait_until
     t0 = time.monotonic()
     flag = {"n": 0}
 
@@ -267,7 +267,7 @@ def test_blocked_jobs_are_reported_once(tmp_path, capsys):
 
 def test_job_env_mutes_the_prices_warning(tmp_path):
     import subprocess as sp
-    from lpswarm.router.router import PRICES_ZERO_WARNING
+    from oracle_router.router.router import PRICES_ZERO_WARNING
     run = _night(tmp_path, ["a"], sleep_s=0, progress=False)
     seen = {}
     real = sp.Popen
@@ -275,7 +275,7 @@ def test_job_env_mutes_the_prices_warning(tmp_path):
     def spy(cmd, **kw):
         seen["env"] = kw["env"]
         return real(cmd, **kw)
-    import lpswarm.overnight as ov
+    import oracle_router.overnight as ov
     ov.subprocess.Popen = spy
     try:
         run.run()
@@ -283,9 +283,9 @@ def test_job_env_mutes_the_prices_warning(tmp_path):
         ov.subprocess.Popen = real
     assert f"ignore:{PRICES_ZERO_WARNING}" in seen["env"]["PYTHONWARNINGS"]
     # and the filter really matches the warning text
-    code = ("import warnings; from lpswarm.router import Router, ModelSpec, Role;"
+    code = ("import warnings; from oracle_router.router import Router, ModelSpec, Role;"
             "Router([ModelSpec('ds','openai_compatible','m',(Role.PROPOSER,),endpoint='https://x.invalid',"
-            "max_usd=1.0)], ledger=__import__('lpswarm.ledger',fromlist=['Ledger']).Ledger())")
+            "max_usd=1.0)], ledger=__import__('oracle_router.ledger',fromlist=['Ledger']).Ledger())")
     out = sp.run([sys.executable, "-c", code], env=seen["env"], capture_output=True, text=True)
     assert out.returncode == 0 and "prices are 0" not in out.stderr
 
@@ -297,7 +297,7 @@ def test_short_sections_skipped_or_flagged(tmp_path):
 
     def swarm(section):
         out = tmp_path / f"s{section}"
-        r = sp.run([sys.executable, "-m", "lpswarm", "swarm", "--manifest", man, "--alphabet", alpha,
+        r = sp.run([sys.executable, "-m", "oracle_router", "swarm", "--manifest", man, "--alphabet", alpha,
                     "--sections", str(section), "--generators", "random_program", "--rounds", "1",
                     "--per-round", "2", "--null-samples", "100", "--ledger", str(out / "l.sqlite"),
                     "--report-dir", str(out)], capture_output=True, text=True, encoding="utf-8",
@@ -337,9 +337,9 @@ def test_per_model_cap_inside_group(tmp_path):
 
 
 def test_supervisor_brief_reaches_the_prompt(tmp_path):
-    from lpswarm.alphabet import Alphabet
-    from lpswarm.overnight import apply_supervisor_reply
-    from lpswarm.swarm.generators import GenContext, build_prompt
+    from oracle_router.alphabet import Alphabet
+    from oracle_router.overnight import apply_supervisor_reply
+    from oracle_router.swarm.generators import GenContext, build_prompt
     import json as _json
     import numpy as np
     led = Ledger(tmp_path / "spend.sqlite")
@@ -368,7 +368,7 @@ def test_supervisor_brief_reaches_the_prompt(tmp_path):
 
 
 def test_lane_orders_and_auto_brief_job(tmp_path):
-    from lpswarm.overnight import _ordered, expand_jobs, load_config
+    from oracle_router.overnight import _ordered, expand_jobs, load_config
     assert _ordered([1, 2, 3, 4, 5], "reverse") == [5, 4, 3, 2, 1]
     mid = _ordered([1, 2, 3, 4, 5], "middle")
     assert mid[0] == 3 and sorted(mid) == [1, 2, 3, 4, 5]
@@ -402,14 +402,14 @@ def test_auto_brief_in_swarm_cli(tmp_path):
     ctx = tmp_path / "ctx.txt"
     ctx.write_text("job codex/11: 40 attempts; near_miss margin -0.10 by codex: primes", encoding="utf-8")
     tr = tmp_path / "t.jsonl"
-    r = sp.run([sys.executable, "-m", "lpswarm", "swarm", "--manifest", str(ROOT / "data/lp/manifest.json"),
+    r = sp.run([sys.executable, "-m", "oracle_router", "swarm", "--manifest", str(ROOT / "data/lp/manifest.json"),
                 "--alphabet", str(ROOT / "data/alphabet/gematria_primus.json"), "--sections", "11",
                 "--generators", "son", "--models", str(models), "--spend-ledger", str(tmp_path / "s.sqlite"),
                 "--rounds", "1", "--per-round", "1", "--null-samples", "100",
                 "--ledger", str(tmp_path / "l.sqlite"), "--report-dir", str(tmp_path / "r"),
                 "--auto-brief", "sup", "--brief-context", str(ctx)],
                capture_output=True, text=True, encoding="utf-8", cwd=ROOT,
-               env={**__import__("os").environ, "LPSWARM_TRANSCRIPT": str(tr)})
+               env={**__import__("os").environ, "ORACLE_ROUTER_TRANSCRIPT": str(tr)})
     assert r.returncode == 0, r.stderr[-800:]
     assert "brief from sup" in r.stdout and "| 1. Try prime streams" in r.stdout
     recs = [_json.loads(x) for x in tr.read_text(encoding="utf-8").splitlines()]
@@ -431,10 +431,10 @@ def test_group_total_is_the_largest_member_cap(tmp_path):
 
 
 def test_equivalent_programs_are_one_attempt():
-    from lpswarm.alphabet import get_alphabet
-    from lpswarm.executor import Executor, ExplicitKeys, Target
-    from lpswarm.oracle import FullOracle, OracleConfig
-    from lpswarm.programs import compile_spec
+    from oracle_router.alphabet import get_alphabet
+    from oracle_router.executor import Executor, ExplicitKeys, Target
+    from oracle_router.oracle import FullOracle, OracleConfig
+    from oracle_router.programs import compile_spec
     import numpy as np
     a = get_alphabet(str(ROOT / "data" / "alphabet" / "gematria_primus.json"))
     assert a.size == 29
@@ -452,8 +452,8 @@ def test_equivalent_programs_are_one_attempt():
 
 
 def test_chance_level_is_monotone_and_sane():
-    from lpswarm.alphabet import Alphabet
-    from lpswarm.oracle import FullOracle, OracleConfig
+    from oracle_router.alphabet import Alphabet
+    from oracle_router.oracle import FullOracle, OracleConfig
     o = FullOracle(Alphabet.latin26(), OracleConfig())   # enough nulls that nothing clamps
     L, N = 200, 30000
     thr_final = o.final_threshold(L, N)[1]
@@ -482,7 +482,7 @@ def test_ranker_backend_is_its_own_resource(tmp_path):
 
 def test_capacity_lets_two_jobs_share_a_backend(tmp_path, capsys):
     import pytest
-    from lpswarm.overnight import load_config
+    from oracle_router.overnight import load_config
     run = _night(tmp_path, ["a", "a", "a"], sleep_s=1.5)
     run.cfg.capacity = {"scripted:a": 2}
     st = run.run()
@@ -498,7 +498,7 @@ def test_capacity_lets_two_jobs_share_a_backend(tmp_path, capsys):
 
 
 def test_resume_picks_up_auto_brief_for_unstarted_jobs(tmp_path):
-    from lpswarm.overnight import _job
+    from oracle_router.overnight import _job
     jobs = [{"id": "codex", "kind": "validate"}]
     cfg = OvernightConfig(models=str(tmp_path / "none.toml"), spend_ledger=str(tmp_path / "s.sqlite"),
                           publish=False, jobs=jobs)
@@ -520,7 +520,7 @@ def test_auto_brief_by_a_proposer_model(tmp_path):
     models.write_text(
         '[models.cx]\nprovider = "scripted"\nmodel = "x"\nroles = ["proposer"]\n'
         'replies = ["1. Try totient streams."]\n', encoding="utf-8")
-    r = sp.run([sys.executable, "-m", "lpswarm", "swarm", "--manifest", str(ROOT / "data/lp/manifest.json"),
+    r = sp.run([sys.executable, "-m", "oracle_router", "swarm", "--manifest", str(ROOT / "data/lp/manifest.json"),
                 "--alphabet", str(ROOT / "data/alphabet/gematria_primus.json"), "--sections", "11",
                 "--generators", "cx", "--models", str(models), "--spend-ledger", str(tmp_path / "s.sqlite"),
                 "--rounds", "1", "--per-round", "1", "--null-samples", "100",
@@ -532,7 +532,7 @@ def test_auto_brief_by_a_proposer_model(tmp_path):
 
 def test_supervisor_generators_and_checkin_gap(tmp_path):
     import json as _json
-    from lpswarm.overnight import apply_supervisor_reply
+    from oracle_router.overnight import apply_supervisor_reply
     led = Ledger(tmp_path / "spend.sqlite")
     specs = [ModelSpec("sup", "scripted", "s", (Role.SUPERVISOR,)),
              ModelSpec("claude-opus", "scripted", "o", (Role.PROPOSER,)),
@@ -560,8 +560,8 @@ def test_supervisor_generators_and_checkin_gap(tmp_path):
 
 
 def test_near_miss_means_better_than_the_best_noise():
-    from lpswarm.alphabet import Alphabet
-    from lpswarm.oracle import FullOracle, OracleConfig
+    from oracle_router.alphabet import Alphabet
+    from oracle_router.oracle import FullOracle, OracleConfig
     a = Alphabet.latin26()
     new, old = FullOracle(a, OracleConfig()), FullOracle(a, OracleConfig(near_miss="alpha"))
     L, N = 200, 500      # 1/N below alpha, and both quantiles inside the null sample
@@ -583,7 +583,7 @@ def test_near_miss_means_better_than_the_best_noise():
 
 def test_extra_body_from_models_toml(tmp_path):
     import pytest
-    from lpswarm.router import load_model_specs, make_adapter
+    from oracle_router.router import load_model_specs, make_adapter
     f = tmp_path / "m.toml"
     f.write_text('[models.ds]\nprovider = "openai_compatible"\nendpoint = "https://x.invalid"\n'
                  'model = "m"\napi_key_env = "K"\nextra_body = { thinking = { type = "disabled" } }\n',
@@ -599,13 +599,13 @@ def test_extra_body_from_models_toml(tmp_path):
 def test_shared_context_peer_ledgers_and_strategy(tmp_path):
     import json as _json
     import numpy as np
-    from lpswarm.alphabet import Alphabet
-    from lpswarm.executor import Executor, ExplicitKeys, Target
-    from lpswarm.ledger.db import peer_tried
-    from lpswarm.oracle import FullOracle, OracleConfig
-    from lpswarm.overnight import apply_supervisor_reply
-    from lpswarm.programs import compile_spec
-    from lpswarm.swarm.generators import GenContext, build_prompt, build_shared_context
+    from oracle_router.alphabet import Alphabet
+    from oracle_router.executor import Executor, ExplicitKeys, Target
+    from oracle_router.ledger.db import peer_tried
+    from oracle_router.oracle import FullOracle, OracleConfig
+    from oracle_router.overnight import apply_supervisor_reply
+    from oracle_router.programs import compile_spec
+    from oracle_router.swarm.generators import GenContext, build_prompt, build_shared_context
     a = Alphabet.latin26()
     ct = np.random.default_rng(0).integers(0, 26, 80)
     # another lane's ledger with one attempt on this target
@@ -633,7 +633,7 @@ def test_shared_context_peer_ledgers_and_strategy(tmp_path):
     assert msg.startswith("strategy note set (800 chars)")
     assert (tmp_path / "run" / "strategy.txt").read_text(encoding="utf-8") == "X" * 800
     # swarm jobs on the same section get each other's ledgers and the strategy file
-    from lpswarm.overnight import _job
+    from oracle_router.overnight import _job
     j1 = _job("a/9", "swarm", ["--sections", "9"], "config")
     j2 = _job("b/9", "swarm", ["--sections", "9"], "config")
     j3 = _job("c/10", "swarm", ["--sections", "10"], "config")
@@ -648,8 +648,8 @@ def test_shared_context_peer_ledgers_and_strategy(tmp_path):
 
 def test_pasted_key_is_refused_without_echo_and_never_published(tmp_path):
     import pytest
-    from lpswarm.overnight import publish_results
-    from lpswarm.router import load_model_specs
+    from oracle_router.overnight import publish_results
+    from oracle_router.router import load_model_specs
     fake = "sk-" + "a1b2c3d4" * 4
     f = tmp_path / "m.toml"
     f.write_text(f'[models.ds]\nprovider = "openai_compatible"\nendpoint = "https://x.invalid"\n'
@@ -694,9 +694,9 @@ _NEW_TRANSPOSES = (
 
 
 def test_new_transpositions_are_permutations_and_round_trip():
-    from lpswarm.alphabet import get_alphabet
-    from lpswarm.programs import compile_spec, decrypt, encrypt
-    from lpswarm.programs import spec as S
+    from oracle_router.alphabet import get_alphabet
+    from oracle_router.programs import compile_spec, decrypt, encrypt
+    from oracle_router.programs import spec as S
     a = get_alphabet(str(ROOT / "data" / "alphabet" / "gematria_primus.json"))
     rng = np.random.default_rng(5)
     for L in (1, 2, 7, 29, 91, 100, 333):
@@ -713,7 +713,7 @@ def test_new_transpositions_are_permutations_and_round_trip():
 
 
 def test_transposition_semantics_small_cases():
-    from lpswarm.programs import spec as S
+    from oracle_router.programs import spec as S
     # 7 cells in a width-3 grid: rows 012 / 345 / 6
     assert S._transpose_perm({"grid": {"width": 3, "read": "columns"}}, 7).tolist() == [0, 3, 6, 1, 4, 2, 5]
     assert S._transpose_perm({"grid": {"width": 3, "read": "boustrophedon_rows"}}, 7).tolist() == \
@@ -726,8 +726,8 @@ def test_transposition_semantics_small_cases():
 
 
 def test_old_specs_keep_their_hashes_and_new_fields_are_opt_in():
-    from lpswarm.alphabet import get_alphabet
-    from lpswarm.programs import compile_spec, spec_hash
+    from oracle_router.alphabet import get_alphabet
+    from oracle_router.programs import compile_spec, spec_hash
     a = get_alphabet(str(ROOT / "data" / "alphabet" / "gematria_primus.json"))
     s = compile_spec({"stream": {"kind": "sequence", "name": "primes", "offset": 5}, "skip": [0],
                       "transpose": {"columnar": [2, 0, 1]}}, a)
@@ -738,8 +738,8 @@ def test_old_specs_keep_their_hashes_and_new_fields_are_opt_in():
 
 def test_ranges_and_exhaustive_expansion_and_limits():
     import pytest
-    from lpswarm.alphabet import get_alphabet
-    from lpswarm.programs import SpecError, compile_spec, expand, expand_iter
+    from oracle_router.alphabet import get_alphabet
+    from oracle_router.programs import SpecError, compile_spec, expand, expand_iter
     a = get_alphabet(str(ROOT / "data" / "alphabet" / "gematria_primus.json"))
     sw = compile_spec({"stream": {"kind": "constant", "value": 3},
                        "transpose": {"grid": {"width": 5, "read": "columns"}},
@@ -777,11 +777,11 @@ def test_ranges_and_exhaustive_expansion_and_limits():
 
 
 def test_exhaustive_search_finds_the_key_and_skips_equivalents():
-    from lpswarm.alphabet import get_alphabet
-    from lpswarm.executor import Executor, ExplicitKeys, Target
-    from lpswarm.oracle import FullOracle, OracleConfig
-    from lpswarm.programs import compile_spec, expand_iter
-    from lpswarm.programs import spec as S
+    from oracle_router.alphabet import get_alphabet
+    from oracle_router.executor import Executor, ExplicitKeys, Target
+    from oracle_router.oracle import FullOracle, OracleConfig
+    from oracle_router.programs import compile_spec, expand_iter
+    from oracle_router.programs import spec as S
     a = get_alphabet(str(ROOT / "data" / "alphabet" / "gematria_primus.json"))
     rng = np.random.default_rng(1)
     pt = rng.integers(0, 29, 200)
@@ -803,12 +803,12 @@ def test_exhaustive_search_finds_the_key_and_skips_equivalents():
 
 
 def test_synthetic_recovery_with_a_railfence_plus_stream():
-    from lpswarm.alphabet import Alphabet
-    from lpswarm.executor import Executor, ExplicitKeys, Target
-    from lpswarm.oracle import FullOracle, OracleConfig
-    from lpswarm.programs import compile_spec, expand_iter
-    from lpswarm.programs import spec as S
-    from lpswarm.textgen.synth import generate_case
+    from oracle_router.alphabet import Alphabet
+    from oracle_router.executor import Executor, ExplicitKeys, Target
+    from oracle_router.oracle import FullOracle, OracleConfig
+    from oracle_router.programs import compile_spec, expand_iter
+    from oracle_router.programs import spec as S
+    from oracle_router.textgen.synth import generate_case
     a = Alphabet.latin26()
     case = generate_case("caesar", 240, seed=4)
     pt = np.asarray(case.plaintext_ints if hasattr(case, "plaintext_ints") else case.plaintext, dtype=np.int64)
@@ -828,9 +828,9 @@ def test_synthetic_recovery_with_a_railfence_plus_stream():
 
 
 def test_report_flags_searches_too_large_to_confirm():
-    from lpswarm.alphabet import Alphabet
-    from lpswarm.oracle import FullOracle, OracleConfig
-    from lpswarm.reports import _confirmable
+    from oracle_router.alphabet import Alphabet
+    from oracle_router.oracle import FullOracle, OracleConfig
+    from oracle_router.reports import _confirmable
     led = Ledger()
     o = FullOracle(Alphabet.latin26(), OracleConfig(null_samples=300))
     assert _confirmable(led, o, "none", 200) is True            # tiny search: fine
@@ -840,7 +840,7 @@ def test_report_flags_searches_too_large_to_confirm():
 
 
 def test_example_queue_structure_and_exhaustive_jobs_carry_briefs():
-    from lpswarm.overnight import expand_jobs, load_config
+    from oracle_router.overnight import expand_jobs, load_config
     cfg = load_config(ROOT / "config" / "overnight.example.toml")
     cfg.manifest = str(ROOT / "data" / "lp" / "manifest.json")
     jobs = expand_jobs(cfg)
@@ -854,7 +854,7 @@ def test_example_queue_structure_and_exhaustive_jobs_carry_briefs():
 
 def test_new_run_sees_earlier_runs_ledgers_and_brief_is_saved(tmp_path):
     import json
-    from lpswarm.overnight import _job
+    from oracle_router.overnight import _job
     base = tmp_path / "overnight"
     old = base / "20261101-0000"
     (old / "sw_9").mkdir(parents=True)
@@ -873,13 +873,13 @@ def test_new_run_sees_earlier_runs_ledgers_and_brief_is_saved(tmp_path):
 
 
 def test_autokey_primer_note_in_the_language_doc():
-    from lpswarm.swarm.generators import LANGUAGE_DOC
+    from oracle_router.swarm.generators import LANGUAGE_DOC
     assert "ONE proposal covers all primers" in LANGUAGE_DOC
 
 
 def test_known_keywords_from_manifest_and_file_reach_the_prompt(tmp_path):
-    from lpswarm.alphabet import Alphabet
-    from lpswarm.swarm.generators import GenContext, build_brief_prompt, build_prompt, known_keywords
+    from oracle_router.alphabet import Alphabet
+    from oracle_router.swarm.generators import GenContext, build_brief_prompt, build_prompt, known_keywords
     extra = tmp_path / "k.txt"
     extra.write_text("# verified\nsomeword\n\n", encoding="utf-8")
     words = known_keywords(str(ROOT / "data" / "lp" / "manifest.json"), str(extra))
@@ -894,12 +894,12 @@ def test_known_keywords_from_manifest_and_file_reach_the_prompt(tmp_path):
 
 # ------------------------------------------------------------------ lean sweeps
 def _lean_setup():
-    from lpswarm.alphabet import Alphabet
-    from lpswarm.executor import Executor, ExplicitKeys, Target
-    from lpswarm.oracle import FullOracle, OracleConfig
-    from lpswarm.programs import compile_spec, expand_iter, spec_hash
-    from lpswarm.programs import spec as S
-    from lpswarm.textgen.synth import generate_case
+    from oracle_router.alphabet import Alphabet
+    from oracle_router.executor import Executor, ExplicitKeys, Target
+    from oracle_router.oracle import FullOracle, OracleConfig
+    from oracle_router.programs import compile_spec, expand_iter, spec_hash
+    from oracle_router.programs import spec as S
+    from oracle_router.textgen.synth import generate_case
     a = Alphabet.latin26()
     pt = np.asarray(generate_case("caesar", 240, seed=2).plaintext, dtype=np.int64)
     true = compile_spec({"stream": {"kind": "repeat", "key": [5, 11]}, "combine": "sub"}, a)
@@ -929,7 +929,7 @@ def test_lean_sweep_counts_every_attempt_but_stores_only_hits(tmp_path):
     assert lean.leads(tid, include_near_miss=True)
     assert lean.sweep_done(tid, spec_hash(sweep)) == lean.lean_count(tid)
     # final thresholds are identical (same N), so lean mode changes storage, not statistics
-    from lpswarm.executor import final_check
+    from oracle_router.executor import final_check
     assert [r["threshold_final"] for r in final_check(lean, o, tid)][:1] == \
         [r["threshold_final"] for r in final_check(full, o, tid)][:1]
     # the proposal is listed as tried (peers/coverage), and a finished sweep is skipped whole
@@ -942,14 +942,14 @@ def test_lean_sweep_counts_every_attempt_but_stores_only_hits(tmp_path):
 
 
 def test_swarm_runs_big_proposals_lean_automatically(tmp_path):
-    from lpswarm.programs import expansion_size
+    from oracle_router.programs import expansion_size
     a, ct, sweep, *_ = _lean_setup()
     assert expansion_size(sweep) == 26 ** 2
 
 
 def test_lean_ledger_is_much_smaller_on_a_bigger_sweep(tmp_path):
     a, ct, _sweep, Executor, ExplicitKeys, Target, FullOracle, OracleConfig, expand_iter, spec_hash = _lean_setup()
-    from lpswarm.programs import compile_spec
+    from oracle_router.programs import compile_spec
     big = compile_spec({"stream": {"kind": "repeat", "exhaustive": True, "key_length": 3},
                         "combine": "sub"}, a)                        # 26^3 = 17,576 ciphers
     o = FullOracle(a, OracleConfig(null_samples=200))
@@ -968,7 +968,7 @@ def test_lean_ledger_is_much_smaller_on_a_bigger_sweep(tmp_path):
 
 # ------------------------------------------------------------------ disk guard
 def test_disk_guard_blocks_and_releases_jobs(tmp_path, monkeypatch, capsys):
-    import lpswarm.diskuse as D
+    import oracle_router.diskuse as D
     run = _night(tmp_path, ["a"], sleep_s=0.3)
     run.cfg.min_free_gb = 15.0
     free = {"gb": 5.0}
@@ -989,7 +989,7 @@ def test_disk_guard_blocks_and_releases_jobs(tmp_path, monkeypatch, capsys):
 
 
 def test_disk_command_and_prune(tmp_path):
-    from lpswarm.diskuse import prune_old_ledgers, run_sizes
+    from oracle_router.diskuse import prune_old_ledgers, run_sizes
     base = tmp_path / "overnight"
     for i, name in enumerate(("r1", "r2", "r3", "r4", "r5")):
         d = base / name / "job"
@@ -1006,13 +1006,13 @@ def test_disk_command_and_prune(tmp_path):
 
 # ----------------------------------------------------------------- mix stages
 def _alpha(n):
-    from lpswarm.programs.family import _IntAlphabet
+    from oracle_router.programs.family import _IntAlphabet
     return _IntAlphabet(n)
 
 
 def test_mix_round_trips_and_semantics():
-    from lpswarm.programs import compile_spec, decrypt, encrypt
-    from lpswarm.programs import mixers as M
+    from oracle_router.programs import compile_spec, decrypt, encrypt
+    from oracle_router.programs import mixers as M
     rng = np.random.default_rng(3)
     a = _alpha(29)
     for L in (1, 2, 5, 31, 100):
@@ -1035,7 +1035,7 @@ def test_mix_round_trips_and_semantics():
 
 
 def test_mix_semantics_small_cases():
-    from lpswarm.programs import mixers as M
+    from oracle_router.programs import mixers as M
     c = {"kind": "neighbor", "op": "add", "lag": 1, "dir": "next", "times": 1, "reset": None, "at": "before"}
     x = np.array([1, 2, 3, 4])
     assert M.apply_mix(c, x, 29).tolist() == [3, 5, 7, 4]                    # x_i + x_(i+1); last unchanged
@@ -1062,7 +1062,7 @@ def test_mix_semantics_small_cases():
 
 
 def test_chain_matches_the_existing_autokey_and_ciphertext_autokey():
-    from lpswarm.programs import compile_spec, decrypt
+    from oracle_router.programs import compile_spec, decrypt
     a = _alpha(29)
     rng = np.random.default_rng(8)
     ct = rng.integers(0, 29, 150)
@@ -1080,7 +1080,7 @@ def test_chain_matches_the_existing_autokey_and_ciphertext_autokey():
 
 def test_hill_and_block_perm_exhaustive_counts_and_limits():
     import pytest
-    from lpswarm.programs import SpecError, compile_spec, expand, expansion_size
+    from oracle_router.programs import SpecError, compile_spec, expand, expansion_size
     a5 = _alpha(5)
     full = compile_spec({"stream": {"kind": "constant", "value": 1},
                          "mix": {"kind": "hill", "size": 2, "exhaustive": True}}, a5)
@@ -1119,7 +1119,7 @@ def test_hill_and_block_perm_exhaustive_counts_and_limits():
 
 
 def test_old_specs_unchanged_and_mix_specs_hash_distinctly():
-    from lpswarm.programs import compile_spec, spec_hash
+    from oracle_router.programs import compile_spec, spec_hash
     a = _alpha(29)
     plain = compile_spec({"stream": {"kind": "constant", "value": 3}}, a)
     assert "mix" not in plain
@@ -1129,12 +1129,12 @@ def test_old_specs_unchanged_and_mix_specs_hash_distinctly():
 
 
 def test_mix_recovers_a_synthetic_neighbor_cipher_end_to_end():
-    from lpswarm.alphabet import Alphabet
-    from lpswarm.executor import Executor, ExplicitKeys, Target
-    from lpswarm.oracle import FullOracle, OracleConfig
-    from lpswarm.programs import compile_spec, expand_iter
-    from lpswarm.programs import spec as S
-    from lpswarm.textgen.synth import generate_case
+    from oracle_router.alphabet import Alphabet
+    from oracle_router.executor import Executor, ExplicitKeys, Target
+    from oracle_router.oracle import FullOracle, OracleConfig
+    from oracle_router.programs import compile_spec, expand_iter
+    from oracle_router.programs import spec as S
+    from oracle_router.textgen.synth import generate_case
     a = Alphabet.latin26()
     pt = np.asarray(generate_case("caesar", 300, seed=6).plaintext, dtype=np.int64)
     true = compile_spec({"stream": {"kind": "constant", "value": 0}, "combine": "sub",
@@ -1153,11 +1153,11 @@ def test_mix_recovers_a_synthetic_neighbor_cipher_end_to_end():
 
 
 def test_word_reset_receives_the_targets_breaks_through_the_executor():
-    from lpswarm.executor import Executor, ExplicitKeys, Target
-    from lpswarm.oracle import FullOracle, OracleConfig
-    from lpswarm.programs import compile_spec
-    from lpswarm.alphabet import Alphabet
-    from lpswarm.ciphers import get_family
+    from oracle_router.executor import Executor, ExplicitKeys, Target
+    from oracle_router.oracle import FullOracle, OracleConfig
+    from oracle_router.programs import compile_spec
+    from oracle_router.alphabet import Alphabet
+    from oracle_router.ciphers import get_family
     a = Alphabet.latin26()
     spec = compile_spec({"stream": {"kind": "constant", "value": 0},
                          "mix": {"kind": "neighbor", "op": "add", "reset": "word"}}, a)
@@ -1173,7 +1173,7 @@ def test_supervisor_brief_for_codex_sees_other_lanes_leads(tmp_path):
     """The Codex job is briefed by the supervisor like Sonnet, from a digest that includes the
     leads of every lane on that section (here: a Sonnet job's report)."""
     import json as _json
-    from lpswarm.overnight import expand_jobs, load_config
+    from oracle_router.overnight import expand_jobs, load_config
     cfg = load_config(ROOT / "config" / "overnight.example.toml")
     cfg.manifest = str(ROOT / "data" / "lp" / "manifest.json")
     cfg.supervisor = "claude-supervisor"
@@ -1212,14 +1212,14 @@ def test_codex_refines_the_supervisor_brief_without_overriding_it(tmp_path):
     ctx = tmp_path / "ctx.txt"
     ctx.write_text("job sonnet/11: 40 attempts; near_miss margin -0.10 by sonnet: primes", encoding="utf-8")
     tr = tmp_path / "t.jsonl"
-    r = sp.run([sys.executable, "-m", "lpswarm", "swarm", "--manifest", str(ROOT / "data/lp/manifest.json"),
+    r = sp.run([sys.executable, "-m", "oracle_router", "swarm", "--manifest", str(ROOT / "data/lp/manifest.json"),
                 "--alphabet", str(ROOT / "data/alphabet/gematria_primus.json"), "--sections", "11",
                 "--generators", "cdx", "--models", str(models), "--spend-ledger", str(tmp_path / "s.sqlite"),
                 "--rounds", "1", "--per-round", "1", "--null-samples", "100",
                 "--ledger", str(tmp_path / "l.sqlite"), "--report-dir", str(tmp_path / "r"),
                 "--auto-brief", "sup", "--refine-brief", "cdx", "--brief-context", str(ctx)],
                capture_output=True, text=True, encoding="utf-8", cwd=ROOT,
-               env={**__import__("os").environ, "LPSWARM_TRANSCRIPT": str(tr)})
+               env={**__import__("os").environ, "ORACLE_ROUTER_TRANSCRIPT": str(tr)})
     assert r.returncode == 0, r.stderr[-800:]
     assert "refinement from cdx" in r.stdout
     recs = [_json.loads(x) for x in tr.read_text(encoding="utf-8").splitlines()]
@@ -1238,7 +1238,7 @@ def test_codex_refines_the_supervisor_brief_without_overriding_it(tmp_path):
 
 def test_refine_brief_needs_supervisor_brief_and_reaches_the_job_command(tmp_path):
     import pytest as _pt
-    from lpswarm.overnight import expand_jobs, load_config
+    from oracle_router.overnight import expand_jobs, load_config
     cfg = load_config(ROOT / "config" / "overnight.example.toml")
     cfg.manifest = str(ROOT / "data" / "lp" / "manifest.json")
     cfg.supervisor = "claude-supervisor"

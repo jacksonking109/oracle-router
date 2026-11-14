@@ -7,10 +7,10 @@ from pathlib import Path
 
 import pytest
 
-from lpswarm.ledger import Ledger
-from lpswarm.router import ModelSpec, RateLimited, Role, Router, ScriptedAdapter
-from lpswarm.router.cli_adapters import CLILimitError, ClaudeCodeAdapter, CodexAdapter
-from lpswarm.router.limits import looks_like_limit, parse_resume_at
+from oracle_router.ledger import Ledger
+from oracle_router.router import ModelSpec, RateLimited, Role, Router, ScriptedAdapter
+from oracle_router.router.cli_adapters import CLILimitError, ClaudeCodeAdapter, CodexAdapter
+from oracle_router.router.limits import looks_like_limit, parse_resume_at
 
 FAKE = r'''
 import json, os, sys, time
@@ -160,7 +160,7 @@ def test_codex_limit_try_again_in(fake, monkeypatch):
 
 
 def test_other_cli_errors_are_not_limits(fake, monkeypatch):
-    from lpswarm.router import AdapterError
+    from oracle_router.router import AdapterError
     monkeypatch.setenv("FAKE_KIND", "claude")
     monkeypatch.setenv("FAKE_MODE", "error")
     with pytest.raises(AdapterError) as ei:
@@ -169,7 +169,7 @@ def test_other_cli_errors_are_not_limits(fake, monkeypatch):
 
 
 def test_missing_cli_is_clear_error():
-    from lpswarm.router import AdapterError
+    from oracle_router.router import AdapterError
     with pytest.raises(AdapterError, match="not found"):
         ClaudeCodeAdapter("", exe="definitely-not-installed-xyz").complete(MSGS)
 
@@ -210,15 +210,15 @@ class _LimitedOnce:
         self.calls += 1
         if self.calls == 1:
             raise CLILimitError("usage limit", time.time() + self.secs, True)
-        from lpswarm.router import Completion
+        from oracle_router.router import Completion
         return Completion(self.reply, "m")
 
 
 def test_swarm_waits_for_reset_and_does_not_lose_the_round(oracle):
-    from lpswarm.alphabet import Alphabet
-    from lpswarm.executor import Target
-    from lpswarm.swarm import LLMGenerator, SwarmConfig, run_swarm
-    from lpswarm.textgen.synth import generate_case
+    from oracle_router.alphabet import Alphabet
+    from oracle_router.executor import Target
+    from oracle_router.swarm import LLMGenerator, SwarmConfig, run_swarm
+    from oracle_router.textgen.synth import generate_case
     a = Alphabet.latin26()
     case = generate_case("caesar", 60, seed=3)
     reply = json.dumps({"proposals": [{"spec": {"stream": {"kind": "constant", "value": 1}}}]})
@@ -240,7 +240,7 @@ def test_swarm_waits_for_reset_and_does_not_lose_the_round(oracle):
 
 
 def test_doctor_reports_cli_models_and_window(fake, tmp_path, monkeypatch):
-    from lpswarm.doctor import OK, run_checks
+    from oracle_router.doctor import OK, run_checks
     cfg = tmp_path / "m.toml"
     cfg.write_text(f'[models.cc]\nprovider = "claude_code"\nmodel = "sonnet"\nexe = {json.dumps(fake["claude"])}\n'
                    f'roles = ["proposer"]\nmax_calls_per_window = 40\n'
@@ -258,7 +258,7 @@ def test_doctor_reports_cli_models_and_window(fake, tmp_path, monkeypatch):
 
 
 def test_review_regressions_claude_parsing(fake, monkeypatch):
-    from lpswarm.router import AdapterError
+    from oracle_router.router import AdapterError
     monkeypatch.setenv("FAKE_KIND", "claude")
     ad = ClaudeCodeAdapter("", exe=fake["claude"])
     monkeypatch.setenv("FAKE_MODE", "trailing")
@@ -292,7 +292,7 @@ def test_stale_reset_time_falls_back_to_cooldown():
 
 @pytest.mark.skipif(os.name == "nt", reason="process-group check uses POSIX signals")
 def test_timeout_kills_the_whole_process_tree(fake, monkeypatch, tmp_path):
-    from lpswarm.router import AdapterError
+    from oracle_router.router import AdapterError
     monkeypatch.setenv("FAKE_KIND", "claude")
     monkeypatch.setenv("FAKE_MODE", "sleep")
     child_file = tmp_path / "child.pid"
@@ -314,10 +314,10 @@ def test_timeout_kills_the_whole_process_tree(fake, monkeypatch, tmp_path):
 def test_loop_never_spins_on_a_past_reset(oracle):
     """A limit that keeps reporting an already-past reset must not make the loop call
     the CLI in a tight loop: each pause is at least a minute, so we stop via timeout."""
-    from lpswarm.alphabet import Alphabet
-    from lpswarm.executor import Target
-    from lpswarm.swarm import LLMGenerator, SwarmConfig, run_swarm
-    from lpswarm.textgen.synth import generate_case
+    from oracle_router.alphabet import Alphabet
+    from oracle_router.executor import Target
+    from oracle_router.swarm import LLMGenerator, SwarmConfig, run_swarm
+    from oracle_router.textgen.synth import generate_case
 
     class AlwaysLimited:
         calls = 0
@@ -338,11 +338,11 @@ def test_loop_never_spins_on_a_past_reset(oracle):
 
 
 def test_codex_reports_the_model_it_ran(fake, monkeypatch, capsys):
-    from lpswarm.router import ModelSpec, Role, Router
-    from lpswarm.ledger import Ledger
+    from oracle_router.router import ModelSpec, Role, Router
+    from oracle_router.ledger import Ledger
     monkeypatch.setenv("FAKE_KIND", "codex")
     monkeypatch.setenv("FAKE_MODEL", "gpt-test-1")
-    monkeypatch.setenv("LPSWARM_LOG_CALLS", "1")
+    monkeypatch.setenv("ORACLE_ROUTER_LOG_CALLS", "1")
     spec = ModelSpec("codex", "codex", "default", (Role.PROPOSER,), extra={"exe": fake["codex"]})
     c = Router([spec], ledger=Ledger()).complete("codex", MSGS, role="proposer")
     assert c.model == "gpt-test-1"

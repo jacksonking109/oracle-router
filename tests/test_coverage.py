@@ -1,4 +1,4 @@
-"""`lpswarm coverage`: counting, evidence boundaries, read-only behaviour, CLI."""
+"""`oracle-router coverage`: counting, evidence boundaries, read-only behaviour, CLI."""
 import hashlib
 import json
 import sqlite3
@@ -7,15 +7,15 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from lpswarm import coverage as C
-from lpswarm.alphabet import Alphabet
-from lpswarm.cli import main
-from lpswarm.executor import Executor, ExplicitKeys, Target, final_check
-from lpswarm.ledger import Ledger
-from lpswarm.oracle import FullOracle, OracleConfig
-from lpswarm.programs import compile_spec, describe, expand_iter, spec_hash
-from lpswarm.programs import spec as S
-from lpswarm.textgen.synth import generate_case
+from oracle_router import coverage as C
+from oracle_router.alphabet import Alphabet
+from oracle_router.cli import main
+from oracle_router.executor import Executor, ExplicitKeys, Target, final_check
+from oracle_router.ledger import Ledger
+from oracle_router.oracle import FullOracle, OracleConfig
+from oracle_router.programs import compile_spec, describe, expand_iter, spec_hash
+from oracle_router.programs import spec as S
+from oracle_router.textgen.synth import generate_case
 
 A = Alphabet.latin26()
 PT = np.asarray(generate_case("caesar", 240, seed=2).plaintext, dtype=np.int64)
@@ -304,7 +304,7 @@ def test_cli_writes_both_files_stably_and_uses_documented_exit_codes(tmp_path, c
     for name in ("coverage.json", "coverage.md"):
         assert (out1 / name).read_bytes() == (out2 / name).read_bytes()     # stable output
     data = json.loads((out1 / "coverage.json").read_text(encoding="utf-8"))
-    assert data["schema"] == "lpswarm-coverage/1" and data["status"] == "complete"
+    assert data["schema"] == "oracle-router-coverage/1" and data["status"] == "complete"
     assert data["inputs"]["counts"] == {"read": 3, "failed": 0}
     assert len(data["sections"]) == 1 and "definitions" in data and data["limitations"]
     md = (out1 / "coverage.md").read_text(encoding="utf-8")
